@@ -1,35 +1,3 @@
-Bash
-#!/bin/bash
-set -e
-
-echo "🔧 Corrigiendo estructura de imágenes para GitHub..."
-
-# 1. Determinar el nombre real de la carpeta de imágenes
-IMG_DIR=""
-if [ -d "Images" ]; then
-    IMG_DIR="Images"
-elif [ -d "images" ]; then
-    IMG_DIR="images"
-else
-    echo "❌ Error: No se encontró la carpeta 'Images' o 'images'."
-    exit 1
-fi
-
-echo "📁 Carpeta detectada: $IMG_DIR"
-
-# 2. Renombrar archivos con espacios/paréntesis a nombres limpios
-cd "$IMG_DIR"
-for file in *; do
-    # Reemplazar "preview (X).webp" por "preview-X.webp"
-    clean_name=$(echo "$file" | sed 's/ (/-/g' | sed 's/)/ /g' | xargs | tr ' ' '_')
-    if [ "$file" != "$clean_name" ]; then
-        echo "🔄 Renombrando: '$file' -> '$clean_name'"
-        mv "$file" "$clean_name"
-    fi
-done
-cd ..
-
-# 3. Reescribir VPC.md con las rutas de imagen sanitizadas
 cat << 'EOF' > VPC.md
 # ☁️ Despliegue de Arquitectura VPC en AWS con LocalStack
 
@@ -39,7 +7,7 @@ Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificaci�
 
 ## 📐 Diagrama de la Arquitectura
 
-![Diagrama AWS VPC](Images/preview-8.webp)
+![Diagrama AWS VPC](Images/preview%20(8).webp)
 
 ### 📌 Especificaciones Técnicas
 * **VPC:** CIDR `100.0.0.0/16` (`floci-vpc`) | ID: `vpc-8076c853`
@@ -56,14 +24,17 @@ Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificaci�
 ### 1. Creación de la VPC
 Se define el espacio de direccionamiento IP principal para la red virtual aislada.
 
-```bash
 aws --endpoint-url=http://localhost:4566 ec2 create-vpc \
     --cidr-block 100.0.0.0/16 \
     --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=floci-vpc}]'
-2. Segmentación de Subredes (Pública y Privada)
-Se divide la VPC en dos subredes /24 independientes dentro de la misma Zona de Disponibilidad (us-east-1a).
 
-Bash
+![Creación de VPC](Images/preview%20(4).webp)
+
+---
+
+### 2. Segmentación de Subredes (Pública y Privada)
+Se divide la VPC en dos subredes `/24` independientes dentro de la misma Zona de Disponibilidad (`us-east-1a`).
+
 # Subred Pública
 aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
     --vpc-id vpc-8076c853 \
@@ -77,10 +48,14 @@ aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
     --cidr-block 100.0.2.0/24 \
     --availability-zone us-east-1a \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Privada}]'
-3. Conexión Externa (Internet Gateway)
+
+![Creación de Subredes](Images/preview%20(5).webp)
+
+---
+
+### 3. Conexión Externa (Internet Gateway)
 Se aprovisiona el componente edge para dar salida y entrada de tráfico público a la red virtual.
 
-Bash
 # Crear Internet Gateway
 aws --endpoint-url=http://localhost:4566 ec2 create-internet-gateway \
     --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=Internet-Gateway}]'
@@ -89,10 +64,14 @@ aws --endpoint-url=http://localhost:4566 ec2 create-internet-gateway \
 aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
     --vpc-id vpc-8076c853 \
     --internet-gateway-id igw-96e96236
-4. Configuración de Tabla de Rutas y Enrutamiento
-Se crea la tabla de rutas, se inyecta la ruta por defecto (0.0.0.0/0 apuntando al IGW) y se asocia exclusivamente a la Subred Pública.
 
-Bash
+![Configuración del IGW](Images/preview%20(2).webp)
+
+---
+
+### 4. Configuración de Tabla de Rutas y Enrutamiento
+Se crea la tabla de rutas, se inyecta la ruta por defecto (`0.0.0.0/0` apuntando al IGW) y se asocia **exclusivamente** a la Subred Pública.
+
 # Crear Tabla de Rutas
 aws --endpoint-url=http://localhost:4566 ec2 create-route-table \
     --vpc-id vpc-8076c853 \
@@ -108,10 +87,14 @@ aws --endpoint-url=http://localhost:4566 ec2 create-route \
 aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
     --subnet-id subnet-7af0455c \
     --route-table-id rtb-5b1cc3b7
-5. Configuración de Firewall Perimetral (Security Group)
-Se define un Security Group stateful para permitir tráfico web entrante (Inbound Rules) en los puertos 80 y 443.
 
-Bash
+![Tabla de Rutas](Images/preview%20(1).webp)
+
+---
+
+### 5. Configuración de Firewall Perimetral (Security Group)
+Se define un Security Group *stateful* para permitir tráfico web entrante (*Inbound Rules*) en los puertos 80 y 443.
+
 # Crear el Security Group
 aws --endpoint-url=http://localhost:4566 ec2 create-security-group \
     --group-name SG-floci \
@@ -124,42 +107,38 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
     --protocol tcp \
     --port 80 \
     --cidr 0.0.0.0/0
-🔍 Auditoría e Inspección de Recursos
-Ejecución de consultas describe-* para auditar la provisión del estado JSON de los recursos en LocalStack:
 
-Bash
-aws --endpoint-url=http://localhost:4566 ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-8076c853"
-🚀 Prueba de Concepto (Validación Servidor Web Nginx)
-Se valida la alcanzabilidad de la red simulando la ejecución de una carga de trabajo en la subred pública expuesta en el puerto 80:
+![Creación Security Group](Images/preview.webp)
 
-Bash
-docker run -d -p 80:80 --name servidor-web-prueba nginx
-📂 Organización de Archivos del Proyecto
-Estructura de la carpeta local y organización de recursos del laboratorio:
-
-EOF
-
-Adaptar si la carpeta local se llama 'images' en vez de 'Images'
-if [ "$IMG_DIR" = "images" ]; then
-sed -i 's/Images//images//g' VPC.md
-fi
-
-echo "📝 VPC.md actualizado con nombres limpios."
-
-4. Sincronizar cambios en Git
-git add .
-git commit -m "fix: renombrar imagenes y corregir enlaces en VPC.md"
-git push origin main --force
-
-echo "✅ ¡Listo! Revisa GitHub ahora."
-
+![Reglas Ingress Security Group](Images/preview%20(6).webp)
 
 ---
 
-### 🚀 Instrucciones de ejecución:
+## 🔍 Auditoría e Inspección de Recursos
 
-1. Guarda el script anterior como `fix-github-images.sh`.
-2. Otorga permisos y ejecútalo en tu terminal:
-   ```bash
-   chmod +x fix-github-images.sh
-   ./fix-github-images.sh
+Ejecución de consultas `describe-*` para auditar la provisión del estado JSON de los recursos en LocalStack:
+
+aws --endpoint-url=http://localhost:4566 ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-8076c853"
+
+![Auditoría de Subredes](Images/preview%20(3).webp)
+
+![Terminal Interactivo CLI](Images/18e2a1e2-80cd-4065-8f01-d7dc4a760f7c.jpeg)
+
+---
+
+## 🚀 Prueba de Concepto (Validación Servidor Web Nginx)
+
+Se valida la alcanzabilidad de la red simulando la ejecución de una carga de trabajo en la subred pública expuesta en el puerto 80:
+
+docker run -d -p 80:80 --name servidor-web-prueba nginx
+
+![Respuesta Servidor Nginx](Images/preview%20(7).webp)
+
+---
+
+## 📂 Organización de Archivos del Proyecto
+
+Estructura de la carpeta local y organización de recursos del laboratorio:
+
+![Estructura del Proyecto](Images/ead9c602-2fb8-459f-a83e-47d3370767fe.jpeg)
+EOF
