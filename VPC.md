@@ -37,7 +37,7 @@ Establecer un **segmento de red aislado y seguro** en AWS para alojar aplicacion
 
 ### Diagrama Visual
 
-![Arquitectura VPC - Floci](./Images/preview-8.png)
+![Arquitectura VPC - Floci](./Images/preview-_8_.png)
 
 ### Especificación
 
