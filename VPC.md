@@ -1,4 +1,36 @@
-Markdown
+Bash
+#!/bin/bash
+set -e
+
+echo "🔧 Corrigiendo estructura de imágenes para GitHub..."
+
+# 1. Determinar el nombre real de la carpeta de imágenes
+IMG_DIR=""
+if [ -d "Images" ]; then
+    IMG_DIR="Images"
+elif [ -d "images" ]; then
+    IMG_DIR="images"
+else
+    echo "❌ Error: No se encontró la carpeta 'Images' o 'images'."
+    exit 1
+fi
+
+echo "📁 Carpeta detectada: $IMG_DIR"
+
+# 2. Renombrar archivos con espacios/paréntesis a nombres limpios
+cd "$IMG_DIR"
+for file in *; do
+    # Reemplazar "preview (X).webp" por "preview-X.webp"
+    clean_name=$(echo "$file" | sed 's/ (/-/g' | sed 's/)/ /g' | xargs | tr ' ' '_')
+    if [ "$file" != "$clean_name" ]; then
+        echo "🔄 Renombrando: '$file' -> '$clean_name'"
+        mv "$file" "$clean_name"
+    fi
+done
+cd ..
+
+# 3. Reescribir VPC.md con las rutas de imagen sanitizadas
+cat << 'EOF' > VPC.md
 # ☁️ Despliegue de Arquitectura VPC en AWS con LocalStack
 
 Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificación de una infraestructura de red privada (**Virtual Private Cloud**) en AWS utilizando la **AWS CLI** sobre un entorno de simulación local con **LocalStack**.
@@ -7,7 +39,7 @@ Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificaci�
 
 ## 📐 Diagrama de la Arquitectura
 
-![Diagrama AWS VPC](<images/preview (8).webp>)
+![Diagrama AWS VPC](Images/preview-8.webp)
 
 ### 📌 Especificaciones Técnicas
 * **VPC:** CIDR `100.0.0.0/16` (`floci-vpc`) | ID: `vpc-8076c853`
@@ -105,14 +137,29 @@ docker run -d -p 80:80 --name servidor-web-prueba nginx
 📂 Organización de Archivos del Proyecto
 Estructura de la carpeta local y organización de recursos del laboratorio:
 
+EOF
+
+Adaptar si la carpeta local se llama 'images' en vez de 'Images'
+if [ "$IMG_DIR" = "images" ]; then
+sed -i 's/Images//images//g' VPC.md
+fi
+
+echo "📝 VPC.md actualizado con nombres limpios."
+
+4. Sincronizar cambios en Git
+git add .
+git commit -m "fix: renombrar imagenes y corregir enlaces en VPC.md"
+git push origin main --force
+
+echo "✅ ¡Listo! Revisa GitHub ahora."
+
 
 ---
 
-### 🚀 Comandos para forzar la actualización en GitHub
+### 🚀 Instrucciones de ejecución:
 
-Para asegurarnos de que Git rastree la carpeta de imágenes sin importar el nombre de mayúsculas/minúsculas, ejecuta esto en tu terminal:
-
-```bash
-git add -A
-git commit -m "fix: rutas de imagenes corregidas para github"
-git push origin main --force
+1. Guarda el script anterior como `fix-github-images.sh`.
+2. Otorga permisos y ejecútalo en tu terminal:
+   ```bash
+   chmod +x fix-github-images.sh
+   ./fix-github-images.sh
