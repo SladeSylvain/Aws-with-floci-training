@@ -104,3 +104,15 @@ Bash
 docker run -d -p 80:80 --name servidor-web-prueba nginx
 📂 Organización de Archivos del Proyecto
 Estructura de la carpeta local y organización de recursos del laboratorio:
+
+
+---
+
+### 🚀 Comandos para forzar la actualización en GitHub
+
+Para asegurarnos de que Git rastree la carpeta de imágenes sin importar el nombre de mayúsculas/minúsculas, ejecuta esto en tu terminal:
+
+```bash
+git add -A
+git commit -m "fix: rutas de imagenes corregidas para github"
+git push origin main --force
