@@ -104,14 +104,3 @@ Bash
 docker run -d -p 80:80 --name servidor-web-prueba nginx
 📂 Organización de Archivos del Proyecto
 Estructura de la carpeta local y organización de recursos del laboratorio:
-
-
----
-
-### 📤 Guarda y sube:
-1. Guarda en VS Code (`Ctrl + S`).
-2. En la terminal ejecuta:
-   ```bash
-   git add VPC.md
-   git commit -m "fix: corrige delimitadores de codigo y sintaxis de imagenes"
-   git push origin main
