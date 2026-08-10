@@ -1,66 +1,284 @@
-Markdown
-# ☁️ AWS VPC Infrastructure & Networking Lab
+# 🌩️ Floci: AWS VPC Infrastructure Deployment
 
-## 📌 Descripción del Proyecto
-Este proyecto documenta el despliegue de una arquitectura de red virtual **AWS VPC** de alta disponibilidad y seguridad utilizando **AWS CLI** y **LocalStack**. El objetivo es aprovisionar una infraestructura de red completa para alojar aplicaciones web de forma segura.
+> AWS VPC provisioning with LocalStack | Infrastructure as Code | AWS CLI
 
 ---
 
-## 📐 Arquitectura de Red
+## 📚 Tabla de Contenidos
 
-La infraestructura consta de:
-* **VPC**: `100.0.0.0/16` (`floci-vpc`)
-* **Subred Pública**: `100.0.1.0/24` (Para servicios orientados a Internet)
-* **Subred Privada**: `100.0.2.0/24` (Para bases de datos y backend)
-* **Internet Gateway**: Adjunto a la VPC para proveer salida pública.
-* **Grupo de Seguridad**: Configurado para permitir acceso HTTP (Puerto 80).
-
-![Diagrama de Arquitectura VPC](images/preview%20(8).webp)
+- [Descripción](#descripción)
+- [Arquitectura](#arquitectura)
+- [Requisitos](#requisitos)
+- [Implementación](#implementación)
+- [Validación](#validación)
+- [Prueba de Concepto](#prueba-de-concepto)
 
 ---
 
-## 🛠️ Paso a Paso del Despliegue e Inspección CLI
+## 🎯 Descripción
 
-### 1. Creación y Estado de la VPC
-Se aprovisionó la VPC principal con su rango CIDR correspondiente.
+**Floci** — Portafolio de infraestructura cloud en AWS. Este proyecto demuestra:
+
+✅ Diseño y provisión de **VPCs** con segmentación de red  
+✅ Implementación de **Security Groups** con reglas stateful  
+✅ Configuración de **Internet Gateways** y tablas de rutas  
+✅ Automatización mediante **AWS CLI** (Infrastructure as Code)  
+✅ Validación con **LocalStack** antes de desplegar en AWS real  
+
+### Caso de Uso
+
+Establecer un **segmento de red aislado y seguro** en AWS para alojar aplicaciones web (Nginx) con control granular de acceso y conectividad controlada.
+
+**Tecnologías:** AWS, AWS CLI, LocalStack, Docker, Bash, Git
+
+---
+
+## 🏗️ Arquitectura
+
+### Diagrama Visual
+
+![Arquitectura VPC - Floci](./Images/11-vpc-architecture-diagram.png)
+
+### Especificación
+
+| Componente | CIDR/ID | Descripción | Estado |
+|-----------|---------|-------------|--------|
+| **VPC** | `100.0.0.0/16` (vpc-8076c853) | Red virtual principal | ✅ Active |
+| **Subred Pública** | `100.0.1.0/24` (subnet-7af0455c) | Recursos accesibles desde Internet | ✅ Active |
+| **Subred Privada** | `100.0.2.0/24` (subnet-2f0593a0) | Recursos aislados | ✅ Active |
+| **Internet Gateway** | igw-96e96236 | Conectividad externa | ✅ Attached |
+| **Route Table** | rtb-5b1cc3b7 | Enrutamiento (0.0.0.0/0 → IGW) | ✅ Associated |
+| **Security Group** | sg-66e40645534f10caa | Firewall (Puerto 80, 443) | ✅ Active |
+
+---
+
+## 📦 Requisitos
+
+### Software Necesario
 
 ```bash
-aws ec2 describe-vpcs --vpc-ids vpc-8076c853
-2. Creación de Subredes (Public & Private)
-Se segmentó la red en subredes públicas y privadas para aislar componentes de software.
+# AWS CLI v2+
+aws --version
 
-Bash
-aws ec2 describe-subnets
-3. Configuración del Internet Gateway (IGW) y Rutas
-Para permitir la conectividad hacia la web en la subred pública, se creó y asoció un Internet Gateway.
+# Docker (para LocalStack)
+docker --version
 
-Bash
-aws ec2 describe-internet-gateways
-aws ec2 describe-route-tables
-4. Configuración del Grupo de Seguridad (Security Group)
-Se definió el grupo de seguridad SG-floci cerrando todo el tráfico inbound excepto el tráfico entrante por el puerto 80 TCP.
+# Git
+git --version
+```
 
-Bash
-aws ec2 authorize-security-group-ingress --group-id sg-xxxxx --protocol tcp --port 80 --cidr 0.0.0.0/0
-aws ec2 describe-security-groups
-5. Validación y Prueba del Servidor Web (Nginx)
-Se desplegó un servidor Nginx en la subred pública y se validó la respuesta exitosa por HTTP.
+### Configuración Inicial
 
-🖥️ Registro Completo de Comandos (Terminal Logs)
-Captura del flujo de ejecución interactivo realizado durante la construcción de la VPC:
+```bash
+# 1. Configurar AWS CLI
+aws configure --profile localstack
+# AWS Access Key ID: test
+# AWS Secret Access Key: test
+# Default region: us-east-1
 
-🚀 Tecnologías Utilizadas
-AWS CLI (Command Line Interface)
+# 2. Iniciar LocalStack
+docker run -d -p 4566:4566 \
+  -e SERVICES=ec2,vpc \
+  localstack/localstack:latest
 
-AWS VPC, Subnets, IGW, Route Tables, Security Groups
-
-LocalStack / AWS Cloud
-
-Nginx Web Server
-
+# 3. Verificar conexión
+aws --endpoint-url=http://localhost:4566 ec2 describe-vpcs
+```
 
 ---
 
-### 🔧 ¿Por qué este cambio soluciona lo de las imágenes?
-1. **Rutas correctas con encode URL**: Las imágenes con espacios como `preview (1).webp` están escritas como `images/preview%20(1).webp`. En Markdown, los espacios en las rutas de archivo rompen las imágenes si no llevan `%20`.
-2. **Sin código de Bash metido en la documentación**: Todo el texto explica exclusivamente la infraestructura Cloud, la red y la verificación del servidor web.
+## 🔧 Implementación
+
+### 1. Crear VPC
+
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 create-vpc \
+    --cidr-block 100.0.0.0/16 \
+    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=floci-vpc}]'
+```
+
+![VPC Creation](./Images/01-vpc-create-first.png)
+
+**Resultado:** `vpc-8076c853`
+
+---
+
+### 2. Crear Subredes
+
+#### Subred Pública
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
+    --vpc-id vpc-8076c853 \
+    --cidr-block 100.0.1.0/24 \
+    --availability-zone us-east-1a \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Publica}]'
+```
+
+#### Subred Privada
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
+    --vpc-id vpc-8076c853 \
+    --cidr-block 100.0.2.0/24 \
+    --availability-zone us-east-1a \
+    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Privada}]'
+```
+
+![Subnets Validation](./Images/05-subnets-describe.png)
+
+---
+
+### 3. Internet Gateway
+
+```bash
+# Crear
+aws --endpoint-url=http://localhost:4566 ec2 create-internet-gateway \
+    --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=floci-igw}]'
+
+# Adjuntar a VPC
+aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
+    --vpc-id vpc-8076c853 \
+    --internet-gateway-id igw-96e96236
+```
+
+![Internet Gateway](./Images/04-internet-gateway-describe.png)
+
+---
+
+### 4. Tablas de Rutas
+
+```bash
+# Crear
+aws --endpoint-url=http://localhost:4566 ec2 create-route-table \
+    --vpc-id vpc-8076c853 \
+    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=Tabla-Rutas-Publica}]'
+
+# Agregar ruta default
+aws --endpoint-url=http://localhost:4566 ec2 create-route \
+    --route-table-id rtb-5b1cc3b7 \
+    --destination-cidr-block 0.0.0.0/0 \
+    --gateway-id igw-96e96236
+
+# Asociar a subred pública
+aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
+    --subnet-id subnet-7af0455c \
+    --route-table-id rtb-5b1cc3b7
+```
+
+![Route Tables](./Images/03-route-tables-describe.png)
+
+---
+
+### 5. Security Groups
+
+```bash
+# Crear
+aws --endpoint-url=http://localhost:4566 ec2 create-security-group \
+    --group-name SG-floci \
+    --description "Firewall para aplicaciones web" \
+    --vpc-id vpc-8076c853
+
+# Autorizar HTTP (80)
+aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
+    --group-id sg-66e40645534f10caa \
+    --protocol tcp \
+    --port 80 \
+    --cidr 0.0.0.0/0
+
+# Autorizar HTTPS (443)
+aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
+    --group-id sg-66e40645534f10caa \
+    --protocol tcp \
+    --port 443 \
+    --cidr 0.0.0.0/0
+```
+
+![Security Groups](./Images/07-sg-complete-inspect.png)
+
+---
+
+## ✅ Validación
+
+### Inspeccionar VPC
+
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 describe-vpcs --vpc-ids vpc-8076c853
+```
+
+![VPC Validation](./Images/06-vpc-describe-output.png)
+
+### Inspeccionar Security Groups
+
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 describe-security-groups \
+    --group-ids sg-66e40645534f10caa
+```
+
+![Security Groups Validation](./Images/02-sg-describe-output.png)
+
+### Inspeccionar Route Tables
+
+```bash
+aws --endpoint-url=http://localhost:4566 ec2 describe-route-tables \
+    --route-table-ids rtb-5b1cc3b7
+```
+
+---
+
+## 🧪 Prueba de Concepto
+
+### Desplegar Nginx
+
+```bash
+docker run -d -p 80:80 --name floci-nginx nginx:latest
+```
+
+### Verificar Conectividad
+
+```bash
+curl http://localhost
+# Expected: HTTP 200 OK + Welcome to nginx!
+```
+
+![Nginx Validation](./Images/10-nginx-welcome-page.png)
+
+---
+
+## 📊 Resumen
+
+| Métrica | Valor |
+|---------|-------|
+| Comandos AWS CLI | 10 |
+| Recursos creados | 6 |
+| Direcciones IP | ~500 |
+| Puertos abiertos | 2 (80, 443) |
+| Tiempo de setup | ~5 minutos |
+| Costo AWS | $0 (LocalStack) |
+
+---
+
+## 🚀 Próximos Proyectos en Floci
+
+1. **Floci-RDS** — Base de datos relacional
+2. **Floci-LB** — Load Balancer & Auto Scaling
+3. **Floci-MultiAZ** — Alta disponibilidad
+4. **Floci-VPN** — Conectividad VPN
+5. **Floci-CDN** — CloudFront
+6. **Floci-Monitoring** — CloudWatch
+7. **Floci-Terraform** — IaC avanzado
+8. **Floci-ECS** — Contenedores
+9. **Floci-Lambda** — Serverless
+10. **Floci-Pipeline** — CI/CD
+
+---
+
+## 📚 Referencias
+
+- [AWS VPC Documentation](https://docs.aws.amazon.com/vpc/)
+- [AWS Security Groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html)
+- [LocalStack Docs](https://docs.localstack.cloud/)
+
+---
+
+**Floci** — Cloud Infrastructure Portfolio | AWS | Networking | IaC
+
+*Versión 1.0.0 | Agosto 2026 | MIT License*
