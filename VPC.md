@@ -1,3 +1,4 @@
+Markdown
 # ☁️ Despliegue de Arquitectura VPC en AWS con LocalStack
 
 Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificación de una infraestructura de red privada (**Virtual Private Cloud**) en AWS utilizando la **AWS CLI** sobre un entorno de simulación local con **LocalStack**.
@@ -6,7 +7,7 @@ Proyecto técnico enfocado en el diseño, provisión, enrutamiento y verificaci�
 
 ## 📐 Diagrama de la Arquitectura
 
-![Diagrama AWS VPC](./images/preview%20(8).webp)
+![Diagrama AWS VPC](<images/preview (8).webp>)
 
 ### 📌 Especificaciones Técnicas
 * **VPC:** CIDR `100.0.0.0/16` (`floci-vpc`) | ID: `vpc-8076c853`
@@ -30,6 +31,7 @@ aws --endpoint-url=http://localhost:4566 ec2 create-vpc \
 2. Segmentación de Subredes (Pública y Privada)
 Se divide la VPC en dos subredes /24 independientes dentro de la misma Zona de Disponibilidad (us-east-1a).
 
+Bash
 # Subred Pública
 aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
     --vpc-id vpc-8076c853 \
@@ -46,6 +48,7 @@ aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
 3. Conexión Externa (Internet Gateway)
 Se aprovisiona el componente edge para dar salida y entrada de tráfico público a la red virtual.
 
+Bash
 # Crear Internet Gateway
 aws --endpoint-url=http://localhost:4566 ec2 create-internet-gateway \
     --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=Internet-Gateway}]'
@@ -57,6 +60,7 @@ aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
 4. Configuración de Tabla de Rutas y Enrutamiento
 Se crea la tabla de rutas, se inyecta la ruta por defecto (0.0.0.0/0 apuntando al IGW) y se asocia exclusivamente a la Subred Pública.
 
+Bash
 # Crear Tabla de Rutas
 aws --endpoint-url=http://localhost:4566 ec2 create-route-table \
     --vpc-id vpc-8076c853 \
@@ -75,6 +79,7 @@ aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
 5. Configuración de Firewall Perimetral (Security Group)
 Se define un Security Group stateful para permitir tráfico web entrante (Inbound Rules) en los puertos 80 y 443.
 
+Bash
 # Crear el Security Group
 aws --endpoint-url=http://localhost:4566 ec2 create-security-group \
     --group-name SG-floci \
@@ -90,7 +95,7 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
 🔍 Auditoría e Inspección de Recursos
 Ejecución de consultas describe-* para auditar la provisión del estado JSON de los recursos en LocalStack:
 
-
+Bash
 aws --endpoint-url=http://localhost:4566 ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-8076c853"
 🚀 Prueba de Concepto (Validación Servidor Web Nginx)
 Se valida la alcanzabilidad de la red simulando la ejecución de una carga de trabajo en la subred pública expuesta en el puerto 80:
@@ -103,11 +108,10 @@ Estructura de la carpeta local y organización de recursos del laboratorio:
 
 ---
 
-### 📤 Guarda y sube a GitHub:
-
-1. **Guarda el archivo** en VS Code (`Ctrl + S`).
+### 📤 Guarda y sube:
+1. Guarda en VS Code (`Ctrl + S`).
 2. En la terminal ejecuta:
    ```bash
    git add VPC.md
-   git commit -m "fix: corrige rutas e integra las 11 imagenes en VPC.md"
+   git commit -m "fix: corrige delimitadores de codigo y sintaxis de imagenes"
    git push origin main
