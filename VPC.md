@@ -37,7 +37,7 @@ Establecer un **segmento de red aislado y seguro** en AWS para alojar aplicacion
 
 ### Diagrama Visual
 
-![Arquitectura VPC - Floci](./Images/11-vpc-architecture-diagram.png)
+![Arquitectura VPC - Floci](./Images/preview-8.png)
 
 ### Especificación
 
@@ -97,7 +97,7 @@ aws --endpoint-url=http://localhost:4566 ec2 create-vpc \
     --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=floci-vpc}]'
 ```
 
-![VPC Creation](./Images/01-vpc-create-first.png)
+![VPC Creation](./Images/preview.png)
 
 **Resultado:** `vpc-8076c853`
 
@@ -123,7 +123,7 @@ aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Privada}]'
 ```
 
-![Subnets Validation](./Images/05-subnets-describe.png)
+![Subnets Validation](./Images/preview-5.png)
 
 ---
 
@@ -140,7 +140,7 @@ aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
     --internet-gateway-id igw-96e96236
 ```
 
-![Internet Gateway](./Images/04-internet-gateway-describe.png)
+![Internet Gateway](./Images/preview-4.png)
 
 ---
 
@@ -164,7 +164,7 @@ aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
     --route-table-id rtb-5b1cc3b7
 ```
 
-![Route Tables](./Images/03-route-tables-describe.png)
+![Route Tables](./Images/preview-2.png)
 
 ---
 
@@ -192,7 +192,7 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
     --cidr 0.0.0.0/0
 ```
 
-![Security Groups](./Images/07-sg-complete-inspect.png)
+![Security Groups](./Images/preview-6.png)
 
 ---
 
@@ -204,7 +204,7 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
 aws --endpoint-url=http://localhost:4566 ec2 describe-vpcs --vpc-ids vpc-8076c853
 ```
 
-![VPC Validation](./Images/06-vpc-describe-output.png)
+![VPC Validation](./Images/preview-1.png)
 
 ### Inspeccionar Security Groups
 
@@ -213,7 +213,7 @@ aws --endpoint-url=http://localhost:4566 ec2 describe-security-groups \
     --group-ids sg-66e40645534f10caa
 ```
 
-![Security Groups Validation](./Images/02-sg-describe-output.png)
+![Security Groups Validation](./Images/preview-3.png)
 
 ### Inspeccionar Route Tables
 
@@ -239,7 +239,7 @@ curl http://localhost
 # Expected: HTTP 200 OK + Welcome to nginx!
 ```
 
-![Nginx Validation](./Images/10-nginx-welcome-page.png)
+![Nginx Validation](./Images/preview-7.png)
 
 ---
 
