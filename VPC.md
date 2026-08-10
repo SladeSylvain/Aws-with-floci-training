@@ -1,121 +1,352 @@
-Markdown
-# ☁️ Despliegue de Arquitectura VPC en AWS con LocalStack
+#!/bin/bash
 
-Proyecto técnico enfocado en el diseño, provisión y verificación de una infraestructura de red privada (**Virtual Private Cloud**) en AWS utilizando la CLI y simulación local con **LocalStack**.
+################################################################################
+# Script: push-to-github.sh
+# Propósito: Automatizar la subida del proyecto AWS VPC a GitHub
+# Autor: Cloud Infrastructure Team
+# Uso: ./push-to-github.sh <username> <repository>
+################################################################################
 
----
+set -e  # Exit on error
 
-## 📐 Diagrama de la Arquitectura
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-![Arquitectura AWS VPC](images/01-arquitectura-vpc.png)
+# Función para imprimir con colores
+print_info() {
+    echo -e "${BLUE}ℹ️  $1${NC}"
+}
 
-### Resumen de Componentes:
-* **VPC:** CIDR `100.0.0.0/16` (`floci-vpc`)
-* **Subred Pública:** `100.0.1.0/24` (Con salida a Internet mediante IGW)
-* **Subred Privada:** `100.0.2.0/24` (Segmento aislado)
-* **Internet Gateway:** `igw-96e96236`
-* **Tabla de Rutas Pública:** `rtb-5b1cc3b7` (Ruta `0.0.0.0/0 -> IGW`)
-* **Security Group:** `SG-floci` (`sg-66e40645534f10caa`) con puertos 80 (HTTP) y 443 (HTTPS) habilitados
+print_success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
 
----
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
 
-## 🛠️ Paso a Paso por Terminal (AWS CLI)
+print_warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
 
-### 1. Creación de la VPC
-Se define el espacio de direccionamiento IP para la red virtual principal.
+################################################################################
+# VALIDACIÓN DE PARÁMETROS
+################################################################################
 
-```bash
-aws --endpoint-url=http://localhost:4566 ec2 create-vpc \
-    --cidr-block 100.0.0.0/16 \
-    --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=floci-vpc}]'
-2. Creación de Subredes (Pública y Privada)
-Se divide la VPC en dos segmentos lógicos dentro de la misma Zona de Disponibilidad.
+if [ $# -lt 2 ]; then
+    print_error "Faltan parámetros"
+    echo ""
+    echo "Uso: $0 <github-username> <repository-name>"
+    echo ""
+    echo "Ejemplo:"
+    echo "  $0 SladeS vaw-aws-floci-training"
+    echo ""
+    exit 1
+fi
 
-Bash
-# Subred Pública
-aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
-    --vpc-id vpc-8076c853 \
-    --cidr-block 100.0.1.0/24 \
-    --availability-zone us-east-1a \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Publica}]'
+GITHUB_USERNAME="$1"
+REPOSITORY_NAME="$2"
+REPO_URL="https://github.com/${GITHUB_USERNAME}/${REPOSITORY_NAME}.git"
 
-# Subred Privada
-aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
-    --vpc-id vpc-8076c853 \
-    --cidr-block 100.0.2.0/24 \
-    --availability-zone us-east-1a \
-    --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Privada}]'
-3. Conexión a Internet (Internet Gateway)
-Se crea el gateway de Internet y se vincula a la VPC para permitir el tráfico hacia/desde el exterior.
+print_info "Configuración:"
+print_info "  Usuario GitHub: ${GITHUB_USERNAME}"
+print_info "  Repositorio: ${REPOSITORY_NAME}"
+print_info "  URL: ${REPO_URL}"
+echo ""
 
-Bash
-# Crear Internet Gateway
-aws --endpoint-url=http://localhost:4566 ec2 create-internet-gateway \
-    --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=Internet-Gateway}]'
+################################################################################
+# PASO 1: VALIDAR GIT
+################################################################################
 
-# Vincular a la VPC
-aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
-    --vpc-id vpc-8076c853 \
-    --internet-gateway-id igw-96e96236
-4. Configuración de Tabla de Rutas y Enrutamiento
-Se habilita el acceso público asociando la ruta por defecto (0.0.0.0/0) hacia el IGW únicamente en la Subred Pública.
+print_info "Paso 1: Validando Git..."
 
-Bash
-# Crear Tabla de Rutas
-aws --endpoint-url=http://localhost:4566 ec2 create-route-table \
-    --vpc-id vpc-8076c853 \
-    --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=Tabla-Rutas-Publica}]'
+if ! command -v git &> /dev/null; then
+    print_error "Git no está instalado"
+    echo "Instala Git con: sudo apt-get install git"
+    exit 1
+fi
 
-# Agregar regla hacia Internet Gateway
-aws --endpoint-url=http://localhost:4566 ec2 create-route \
-    --route-table-id rtb-5b1cc3b7 \
-    --destination-cidr-block 0.0.0.0/0 \
-    --gateway-id igw-96e96236
+GIT_VERSION=$(git --version)
+print_success "Git disponible: ${GIT_VERSION}"
+echo ""
 
-# Asociar la tabla a la Subred Pública
-aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
-    --subnet-id subnet-7af0455c \
-    --route-table-id rtb-5b1cc3b7
-5. Configuración de Firewall (Security Group)
-Se define un Security Group con reglas de entrada (Inbound Rules) para habilitar el tráfico web.
+################################################################################
+# PASO 2: VALIDAR ESTRUCTURA DEL PROYECTO
+################################################################################
 
-Bash
-# Crear el Security Group
-aws --endpoint-url=http://localhost:4566 ec2 create-security-group \
-    --group-name SG-floci \
-    --description "firewall para web" \
-    --vpc-id vpc-8076c853
+print_info "Paso 2: Validando estructura del proyecto..."
 
-# Regla de entrada: HTTP (Puerto 80)
-aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
-    --group-id sg-66e40645534f10caa \
-    --protocol tcp \
-    --port 80 \
-    --cidr 0.0.0.0/0
+if [ ! -f "README.md" ]; then
+    print_error "README.md no encontrado"
+    exit 1
+fi
 
-# Regla de entrada: HTTPS (Puerto 443)
-aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
-    --group-id sg-66e40645534f10caa \
-    --protocol tcp \
-    --port 443 \
-    --cidr 0.0.0.0/0
-🔍 Inspección y Verificación de Infraestructura
-Para validar el correcto estado y asociación de los recursos provistos, se consultan las APIs correspondientes:
+if [ ! -d "Images" ]; then
+    print_error "Carpeta 'Images' no encontrada"
+    exit 1
+fi
 
-🚀 Prueba de Concepto (Servidor Web)
-Se simula la ejecución de una instancia EC2 desplegada en la Subred Pública exponiendo un servidor web Nginx en el puerto 80:
+FILE_COUNT=$(find Images -type f | wc -l)
+print_success "Estructura validada:"
+print_success "  - README.md (encontrado)"
+print_success "  - Carpeta Images/ con ${FILE_COUNT} archivos"
+echo ""
 
-Bash
-docker run -d -p 80:80 --name servidor-web-prueba nginx
-Resultado de la conectividad:
+################################################################################
+# PASO 3: INICIALIZAR REPOSITORIO GIT
+################################################################################
 
----
+print_info "Paso 3: Inicializando repositorio Git..."
 
-### 🚀 Para actualizarlo en tu GitHub:
+if [ -d ".git" ]; then
+    print_warning "El repositorio Git ya existe"
+    read -p "¿Deseas continuar? (s/n): " CONTINUE
+    if [ "$CONTINUE" != "s" ]; then
+        print_error "Operación cancelada"
+        exit 1
+    fi
+else
+    git init
+    print_success "Repositorio Git inicializado"
+fi
 
-En tu terminal, ejecuta:
+echo ""
 
-```bash
-git add VPC.md images/
-git commit -m "docs: reestructura VPC.md con formato profesional para portafolio"
-git push origin main
+################################################################################
+# PASO 4: CONFIGURAR GIT (opcional)
+################################################################################
+
+print_info "Paso 4: Configurando Git..."
+
+CURRENT_USER=$(git config user.name 2>/dev/null || echo "")
+CURRENT_EMAIL=$(git config user.email 2>/dev/null || echo "")
+
+if [ -z "$CURRENT_USER" ]; then
+    read -p "Ingresa tu nombre (ej: Slade Sylvain): " GIT_USER
+    git config user.name "$GIT_USER"
+fi
+
+if [ -z "$CURRENT_EMAIL" ]; then
+    read -p "Ingresa tu email: " GIT_EMAIL
+    git config user.email "$GIT_EMAIL"
+fi
+
+print_success "Usuario Git: $(git config user.name)"
+print_success "Email Git: $(git config user.email)"
+echo ""
+
+################################################################################
+# PASO 5: CREAR .gitignore
+################################################################################
+
+print_info "Paso 5: Creando .gitignore..."
+
+if [ ! -f ".gitignore" ]; then
+    cat > .gitignore << 'EOF'
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LocalStack
+.localstack/
+localstack_logs/
+
+# AWS
+.aws/
+*.pem
+*.key
+
+# Temporal
+*.tmp
+.temp/
+EOF
+    print_success ".gitignore creado"
+else
+    print_warning ".gitignore ya existe"
+fi
+
+echo ""
+
+################################################################################
+# PASO 6: AGREGAR ARCHIVOS AL STAGING
+################################################################################
+
+print_info "Paso 6: Agregando archivos al staging..."
+
+git add README.md
+git add Images/
+git add .gitignore
+git add *.sh 2>/dev/null || true
+
+STAGED_FILES=$(git diff --cached --name-only | wc -l)
+print_success "${STAGED_FILES} archivos agregados al staging"
+
+git diff --cached --name-only | sed 's/^/  ✓ /'
+
+echo ""
+
+################################################################################
+# PASO 7: CREAR COMMIT
+################################################################################
+
+print_info "Paso 7: Creando commit..."
+
+COMMIT_MESSAGE="docs: AWS VPC Infrastructure deployment with LocalStack
+
+- Provisioned VPC with 2 subnets (public/private)
+- Configured Internet Gateway and routing
+- Implemented Security Groups for web traffic
+- Validated with Nginx deployment
+- Includes complete AWS CLI commands and architecture diagrams
+
+Project: AWS-with-floci-training
+"
+
+git commit -m "$COMMIT_MESSAGE"
+
+print_success "Commit creado exitosamente"
+echo ""
+
+################################################################################
+# PASO 8: AGREGAR REMOTE ORIGIN
+################################################################################
+
+print_info "Paso 8: Configurando remote origin..."
+
+# Verificar si remote ya existe
+if git remote get-url origin &>/dev/null; then
+    CURRENT_URL=$(git remote get-url origin)
+    print_warning "Remote origin ya existe: ${CURRENT_URL}"
+    
+    if [ "$CURRENT_URL" != "$REPO_URL" ]; then
+        print_info "Actualizando remote origin..."
+        git remote set-url origin "$REPO_URL"
+    fi
+else
+    git remote add origin "$REPO_URL"
+    print_success "Remote origin agregado"
+fi
+
+echo ""
+
+################################################################################
+# PASO 9: VERIFICAR RAMA PRINCIPAL
+################################################################################
+
+print_info "Paso 9: Verificando rama principal..."
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+print_info "Rama actual: ${CURRENT_BRANCH}"
+
+if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
+    print_warning "Rama no es main/master"
+    read -p "¿Deseas renombrar a 'main'? (s/n): " RENAME
+    if [ "$RENAME" = "s" ]; then
+        git branch -M main
+        print_success "Rama renombrada a 'main'"
+    fi
+fi
+
+echo ""
+
+################################################################################
+# PASO 10: PUSH A GITHUB
+################################################################################
+
+print_info "Paso 10: Preparando push a GitHub..."
+
+echo ""
+print_warning "IMPORTANTE: Antes de continuar, asegúrate de:"
+echo "  1. Haber creado el repositorio en GitHub: https://github.com/new"
+echo "  2. El repositorio debe llamarse: ${REPOSITORY_NAME}"
+echo "  3. Estar autenticado en GitHub (usa Personal Access Token)"
+echo ""
+
+read -p "¿Continuar con el push? (s/n): " CONFIRM
+
+if [ "$CONFIRM" != "s" ]; then
+    print_warning "Push cancelado"
+    echo ""
+    print_info "Para hacer push más tarde, ejecuta:"
+    echo "  git push -u origin main"
+    exit 0
+fi
+
+echo ""
+print_info "Realizando push..."
+
+# Intentar push
+if git push -u origin main 2>&1; then
+    print_success "¡Push completado exitosamente!"
+    echo ""
+    print_success "Tu repositorio está disponible en:"
+    echo "  ${REPO_URL}"
+    echo ""
+else
+    print_error "El push falló. Posibles causas:"
+    echo ""
+    echo "  1. Repositorio no existe en GitHub"
+    echo "     → Crea uno en https://github.com/new"
+    echo ""
+    echo "  2. Falta autenticación"
+    echo "     → Usa GitHub CLI: gh auth login"
+    echo "     → O configura SSH key"
+    echo ""
+    echo "  3. Rama remota existe"
+    echo "     → Intenta: git push -f origin main"
+    echo ""
+    exit 1
+fi
+
+################################################################################
+# PASO 11: VERIFICACIÓN FINAL
+################################################################################
+
+print_info "Paso 11: Verificación final..."
+
+git log --oneline -1
+print_success "¡Proyecto subido a GitHub exitosamente!"
+
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+print_success "RESUMEN"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+print_success "✅ Repositorio inicializado"
+print_success "✅ Archivos agregados al staging"
+print_success "✅ Commit creado"
+print_success "✅ Push a GitHub completado"
+echo ""
+echo "Próximos pasos:"
+echo "  1. Visita tu repositorio: ${REPO_URL}"
+echo "  2. Agrega una descripción y topics (aws, networking, infrastructure)"
+echo "  3. Habilita GitHub Pages en Settings para hospedaje web"
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo ""
