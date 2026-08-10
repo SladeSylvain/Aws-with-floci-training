@@ -256,21 +256,6 @@ curl http://localhost
 
 ---
 
-## 🚀 Próximos Proyectos en Floci
-
-1. **Floci-RDS** — Base de datos relacional
-2. **Floci-LB** — Load Balancer & Auto Scaling
-3. **Floci-MultiAZ** — Alta disponibilidad
-4. **Floci-VPN** — Conectividad VPN
-5. **Floci-CDN** — CloudFront
-6. **Floci-Monitoring** — CloudWatch
-7. **Floci-Terraform** — IaC avanzado
-8. **Floci-ECS** — Contenedores
-9. **Floci-Lambda** — Serverless
-10. **Floci-Pipeline** — CI/CD
-
----
-
 ## 📚 Referencias
 
 - [AWS VPC Documentation](https://docs.aws.amazon.com/vpc/)
