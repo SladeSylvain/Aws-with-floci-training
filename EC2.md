@@ -87,6 +87,7 @@ aws --endpoint-url=http://localhost:4566 s3 ls
 
 ## 🔧 Implementación
 
+![VPC](./images/6004fe2e-dfab-47f1-8546-f2d87985fc4c.png)
 ### 1. Crear Bucket S3
 
 ```
@@ -131,6 +132,8 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
 
 ---
 
+![Security group](./images/a98ae736-fd0a-4a1c-9755-e747bfb02125.png)
+
 ## ✅ Validación
 
 ### Listar contenido del Bucket
@@ -153,6 +156,8 @@ aws --endpoint-url=http://localhost:4566 ec2 describe-security-groups --group-id
 
 ---
 
+![EC2](./images/6004fe2e-dfab-47f1-8546-f2d87985fc4c.png)
+
 ## 📊 Resumen
 
 | Métrica             | Valor            |
@@ -163,20 +168,6 @@ aws --endpoint-url=http://localhost:4566 ec2 describe-security-groups --group-id
 | Puertos abiertos     | 2 (80, 443)      |
 | Costo AWS            | $0 (LocalStack)  |
 
----
-
-## 🚀 Próximos Proyectos en Floci
-
-1. **Floci-RDS** — Base de datos relacional
-2. **Floci-LB** — Load Balancer & Auto Scaling
-3. **Floci-MultiAZ** — Alta disponibilidad
-4. **Floci-VPN** — Conectividad VPN
-5. **Floci-CDN** — CloudFront
-6. **Floci-Monitoring** — CloudWatch
-7. **Floci-Terraform** — IaC avanzado
-8. **Floci-ECS** — Contenedores
-9. **Floci-Lambda** — Serverless
-10. **Floci-Pipeline** — CI/CD
 
 ---
 
