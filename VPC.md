@@ -37,7 +37,7 @@ Establecer un **segmento de red aislado y seguro** en AWS para alojar aplicacion
 
 ### Diagrama Visual
 
-![Arquitectura VPC - Floci](./images/preview-8.png)
+![Arquitectura VPC - Floci](./images/preview-_8_.png)
 
 ### Especificación
 
@@ -123,7 +123,7 @@ aws --endpoint-url=http://localhost:4566 ec2 create-subnet \
     --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=Subred-Privada}]'
 ```
 
-![Subnets Validation](./images/preview-5.png)
+![Subnets Validation](./images/preview-_5_.png)
 
 ---
 
@@ -140,7 +140,7 @@ aws --endpoint-url=http://localhost:4566 ec2 attach-internet-gateway \
     --internet-gateway-id igw-96e96236
 ```
 
-![Internet Gateway](./images/preview-4.png)
+![Internet Gateway](./images/preview-_4_.png)
 
 ---
 
@@ -164,7 +164,7 @@ aws --endpoint-url=http://localhost:4566 ec2 associate-route-table \
     --route-table-id rtb-5b1cc3b7
 ```
 
-![Route Tables](./images/preview-2.png)
+![Route Tables](./images/preview-_2_.png)
 
 ---
 
@@ -192,7 +192,7 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
     --cidr 0.0.0.0/0
 ```
 
-![Security Groups](./images/preview-6.png)
+![Security Groups](./images/preview-_6_.png)
 
 ---
 
@@ -204,7 +204,7 @@ aws --endpoint-url=http://localhost:4566 ec2 authorize-security-group-ingress \
 aws --endpoint-url=http://localhost:4566 ec2 describe-vpcs --vpc-ids vpc-8076c853
 ```
 
-![VPC Validation](./images/preview-1.png)
+![VPC Validation](./images/preview-_1_.png)
 
 ### Inspeccionar Security Groups
 
@@ -213,7 +213,7 @@ aws --endpoint-url=http://localhost:4566 ec2 describe-security-groups \
     --group-ids sg-66e40645534f10caa
 ```
 
-![Security Groups Validation](./images/preview-3.png)
+![Security Groups Validation](./images/preview-_3_.png)
 
 ### Inspeccionar Route Tables
 
@@ -239,7 +239,7 @@ curl http://localhost
 # Expected: HTTP 200 OK + Welcome to nginx!
 ```
 
-![Nginx Validation](./images/preview-7.png)
+![Nginx Validation](./images/preview-_7_.png)
 
 ---
 
